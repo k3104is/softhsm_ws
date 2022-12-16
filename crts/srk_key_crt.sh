@@ -1,9 +1,9 @@
 #!/bin/bash
 
 
-# create srk key and crts
+# generate srk key and crts
 export SRK1_KEY="SRK1_sha256_p256_ca"
-# create key pair to hsm
+# generate key pair to hsm
 sudo pkcs11-tool \
   --module $PKCS11_MODULE \
   --pin $USR_PIN \
@@ -11,7 +11,7 @@ sudo pkcs11-tool \
   --key-type EC:prime256v1 \
   --label $SRK1_KEY \
   --id 1001
-# create csr
+# generate csr
 sudo openssl req \
   -engine pkcs11 \
   -new -batch \
@@ -19,7 +19,7 @@ sudo openssl req \
   -key "label_${SRK1_KEY}" \
   -keyform engine \
   -out temp_srk_req.pem
-# create crt
+# generate crt
 sudo openssl ca \
   -engine pkcs11 \
   -batch \

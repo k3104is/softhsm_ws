@@ -1,9 +1,9 @@
 #!/bin/bash
 
 
-# create ca key and crts
+# generate ca key and crts
 export CA_KEY="CA1_sha256_p256_ca"
-# create key pair to hsm
+# generate key pair to hsm
 sudo pkcs11-tool \
   --module $PKCS11_MODULE -l \
   --pin $USR_PIN \
@@ -11,7 +11,7 @@ sudo pkcs11-tool \
   --key-type EC:prime256v1 \
   --label $CA_KEY \
   --id 1000
-# create self-crt
+# generate self-crt
 sudo openssl req \
   -engine pkcs11 \
   -new -batch \
