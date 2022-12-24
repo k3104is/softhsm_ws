@@ -6,3 +6,4 @@ serial
 index.txt
 *.csr
 *.der
+softhsm/
