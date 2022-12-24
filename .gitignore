@@ -1,5 +1,8 @@
 cst-3.1.0/
 *.pem
 *.attr
+*.old
 serial
 index.txt
+*.csr
+*.der
