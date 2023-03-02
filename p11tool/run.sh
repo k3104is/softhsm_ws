@@ -8,26 +8,20 @@ pushd ./softhsm/tokens
 echo "directories.tokendir = ${PWD}" > softhsm2.conf
 export SOFTHSM2_CONF=${PWD}/softhsm2.conf
 popd
+
 # https://gitlab.com/gnutls/gnutls/-/issues/721
-softhsm2-util --init-token --free --label softhsm --pin $USR_PIN --so-pin $SO_PIN
-p11tool --generate-privkey=RSA --bits=2048 --label=pkey --login --set-pin=$USR_PIN pkcs11:token=softhsm
-p11tool --list-all --so-login --set-so-pin=$SO_PIN pkcs11:token=softhsm
+softhsm2-util --init-token --free --label softhsm --pin ${USER_PIN} --so-pin ${SO_PIN}
+URL=$(p11tool --list-token-url --so-login --set-so-pin=${SO_PIN} pkcs11:token=softhsm | sed -n 2p)
+URL_USER_PIN=${URL}";pin-value="${USER_PIN}
 
+p11tool --login --generate-ecc --curve=secp256r1 --label="ec-key-256" --outfile="ec-key-256.pub" ${URL} --set-pin=${USER_PIN}
+p11tool --login --list-privkeys ${URL} --set-pin=${USER_PIN}
 
-URL=$(p11tool --list-token-url --so-login --set-so-pin=$SO_PIN pkcs11:token=softhsm | sed -n 2p)";pin-value="${SO_PIN}
-
-openssl req -engine pkcs11 -new -key ${URL} -keyform engine -out req.pem -text -x509 -subj "/CN=NXP Semiconductor"
-
-openssl x509 -engine pkcs11 -signkey ${URL} -keyform engine -in req.pem -out cert.pem
-
+openssl req -engine pkcs11 -new -key ${URL_USER_PIN} -keyform engine -out req.pem -x509 -subj "/CN=NXP Semiconductor"
+openssl x509 -engine pkcs11 -signkey ${URL_USER_PIN} -keyform engine -in req.pem -out cert.pem
 
 echo "hello softhsm" > plain.txt
-openssl pkeyutl -engine pkcs11 -encrypt -in plain.txt -out encrypted.enc -inkey cert.pem -certin
-openssl pkeyutl -engine pkcs11 -decrypt -in encrypted.enc -out plain.dec -inkey ${URL} -keyform engine
-cat plain.txt
-cat plain.dec
-
-rm -rf ./softhsm
-rm -rf ./*.pem ./*.enc ./*.dec ./*.txt
+openssl pkeyutl -engine pkcs11 -sign -in plain.txt -out cert_ecc.sign -inkey ${URL_USER_PIN} -keyform engine
+openssl pkeyutl -verify -in plain.txt -sigfile cert_ecc.sign -inkey cert.pem -certin
 
 set +x

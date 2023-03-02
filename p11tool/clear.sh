@@ -1,4 +1,4 @@
 #!/bin/bash
 
 rm -rf ./softhsm
-rm -rf ./*.pem
+rm -rf ./*.pem ./*.enc ./*.dec ./*.txt ./*.sign ./*.pub
