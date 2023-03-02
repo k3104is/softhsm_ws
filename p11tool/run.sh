@@ -9,17 +9,22 @@ echo "directories.tokendir = ${PWD}" > softhsm2.conf
 export SOFTHSM2_CONF=${PWD}/softhsm2.conf
 popd
 
+# generate softhsm
 # https://gitlab.com/gnutls/gnutls/-/issues/721
 softhsm2-util --init-token --free --label softhsm --pin ${USER_PIN} --so-pin ${SO_PIN}
 URL=$(p11tool --list-token-url --so-login --set-so-pin=${SO_PIN} pkcs11:token=softhsm | sed -n 2p)
 URL_USER_PIN=${URL}";pin-value="${USER_PIN}
 
+# generate ecc key
 p11tool --login --generate-ecc --curve=secp256r1 --label="ec-key-256" --outfile="ec-key-256.pub" ${URL} --set-pin=${USER_PIN}
+# check
 p11tool --login --list-privkeys ${URL} --set-pin=${USER_PIN}
 
+# generate cert
 openssl req -engine pkcs11 -new -key ${URL_USER_PIN} -keyform engine -out req.pem -x509 -subj "/CN=NXP Semiconductor"
 openssl x509 -engine pkcs11 -signkey ${URL_USER_PIN} -keyform engine -in req.pem -out cert.pem
 
+# test signature verify
 echo "hello softhsm" > plain.txt
 openssl pkeyutl -engine pkcs11 -sign -in plain.txt -out cert_ecc.sign -inkey ${URL_USER_PIN} -keyform engine
 openssl pkeyutl -verify -in plain.txt -sigfile cert_ecc.sign -inkey cert.pem -certin
