@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -x
+# set -x
 
 # https://stackoverflow.com/questions/53230852/error-creating-token-via-softhsm2-as-non-root-user-could-not-initialize-the-lib
 mkdir -p ./softhsm/tokens
@@ -20,13 +20,52 @@ p11tool --login --generate-ecc --curve=secp256r1 --label="ec-key-256" --outfile=
 # check
 p11tool --login --list-privkeys ${URL} --set-pin=${USER_PIN}
 
-# generate cert
-openssl req -engine pkcs11 -new -key ${URL_USER_PIN} -keyform engine -out req.pem -x509 -subj "/CN=NXP Semiconductor"
-openssl x509 -engine pkcs11 -signkey ${URL_USER_PIN} -keyform engine -in req.pem -out cert.pem
+# generate csr
+openssl req -engine pkcs11 -new -key ${URL_USER_PIN} -keyform engine -out server.csr -subj "/CN=NXP Semiconductor"
 
-# test signature verify
-echo "hello softhsm" > plain.txt
-openssl pkeyutl -engine pkcs11 -sign -in plain.txt -out cert_ecc.sign -inkey ${URL_USER_PIN} -keyform engine
-openssl pkeyutl -verify -in plain.txt -sigfile cert_ecc.sign -inkey cert.pem -certin
 
-set +x
+
+
+# set serial
+echo "01" > serial
+
+# generate a private key for a curve
+openssl ecparam -name prime256v1 > ecdsaparam
+
+# create a self-signed certificate
+openssl req -nodes -x509 \
+  -newkey ec:ecdsaparam \
+  -keyout ca.key \
+  -subj "/C=JP/ST=Nagoya/O=myhome/CN=localhost" \
+  -days 3650 \
+  -out ca.crt
+
+# certificate
+openssl x509 -req \
+  -in ./server.csr \
+  -CA ca.crt \
+  -CAserial serial \
+  -CAkey ca.key \
+  -out server.crt
+
+# launch server
+openssl s_server \
+  -engine pkcs11 \
+  -accept 54321 \
+  -cert server.crt \
+  -key ${URL_USER_PIN} -keyform engine \
+  -CAfile ca.crt &
+sleep 1
+
+# launch client
+echo "Hello, World!" | openssl s_client \
+  -connect 127.0.0.1:54321 \
+  -CAfile ca.crt \
+  > /dev/null 2>&1
+sleep 2
+
+# delete task
+jobs -l | awk -F' ' '{print $2}' | xargs kill -9 > /dev/null 2>&1
+sleep 1
+
+# set +x
