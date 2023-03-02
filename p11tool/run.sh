@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# set -x
+set -x
 
 # https://stackoverflow.com/questions/53230852/error-creating-token-via-softhsm2-as-non-root-user-could-not-initialize-the-lib
 mkdir -p ./softhsm/tokens
@@ -22,9 +22,6 @@ p11tool --login --list-privkeys ${URL} --set-pin=${USER_PIN}
 
 # generate csr
 openssl req -engine pkcs11 -new -key ${URL_USER_PIN} -keyform engine -out server.csr -subj "/CN=NXP Semiconductor"
-
-
-
 
 # set serial
 echo "01" > serial
@@ -68,4 +65,4 @@ sleep 2
 jobs -l | awk -F' ' '{print $2}' | xargs kill -9 > /dev/null 2>&1
 sleep 1
 
-# set +x
+set +x
